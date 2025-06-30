@@ -8,6 +8,9 @@ cp -r /home/kicad/.config/kicad $HOME/.config/
 erc_violation=0 # ERC exit code
 drc_violation=0 # DRC exit code
 
+# Temporary file to capture summary output
+kicad_out=/tmp/kicad-cli.out
+
 # Run ERC if requested
 if [[ -n $INPUT_KICAD_SCH ]] && [[ $INPUT_SCH_ERC = "true" ]]
 then
@@ -15,8 +18,10 @@ then
     --output "`dirname $INPUT_KICAD_SCH`/$INPUT_SCH_ERC_FILE" \
     --format $INPUT_REPORT_FORMAT \
     --exit-code-violations \
-    "$INPUT_KICAD_SCH"
-  erc_violation=$?
+    "$INPUT_KICAD_SCH" | tee "$kicad_out"
+    erc_violation=${PIPESTATUS[0]}
+    echo "erc_message=`grep ^Found $kicad_out`" >> "$GITHUB_OUTPUT"
+    echo "erc_violation=$erc_violation" >> "$GITHUB_OUTPUT"
 fi
 
 # Export schematic PDF if requested
@@ -43,8 +48,10 @@ then
     --output "`dirname $INPUT_KICAD_PCB`/$INPUT_PCB_DRC_FILE" \
     --format $INPUT_REPORT_FORMAT \
     --exit-code-violations \
-    "$INPUT_KICAD_PCB"
-  drc_violation=$?
+    "$INPUT_KICAD_PCB" | tee "$kicad_out"
+  drc_violation=${PIPESTATUS[0]}
+  echo "drc_message=`cat $kicad_out | tr '\n' ' '`" >> "$GITHUB_OUTPUT"
+  echo "drc_violation=$drc_violation" >> "$GITHUB_OUTPUT"
 fi
 
 # Export Gerbers if requested
@@ -78,6 +85,14 @@ then
   kicad-cli pcb export step $INPUT_PCB_MODEL_FLAGS \
     --output "`dirname $INPUT_KICAD_PCB`/$INPUT_PCB_MODEL_FILE" \
     "$INPUT_KICAD_PCB"
+fi
+
+# Generate Github Action annotations for failed ERC or DRC violations
+if [[ $erc_violation -gt 0 ]]; then
+  echo "::error title=ERC Violation::$erc_message"
+fi
+if [[ $drc_violation -gt 0 ]]; then
+  echo "::error title=DRC Violation::$drc_message"
 fi
 
 # Return non-zero exit code for ERC or DRC violations
