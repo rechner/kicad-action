@@ -26,7 +26,7 @@ jobs:
 
       - name: Export production files
         id: production
-        uses: sparkengineering/kicad-action@v4
+        uses: rechner/kicad-action@main
         if: '!cancelled()'
         with:
           kicad_sch: my-project.kicad_sch
@@ -35,20 +35,27 @@ jobs:
           kicad_pcb: my-project.kicad_pcb
           pcb_gerbers: true # Generate Gerbers
 
+      - id: info
+        env:
+          GITHUB_SHA: ${{ github.sha }}
+        run: |
+          echo "now=$(date +'%Y-%m-%dT%H-%M-%S')" >> $GITHUB_ENV >> $GITHUB_OUTPUT
+          echo "sha_short=${GITHUB_SHA::7}" >> $GITHUB_ENV >> $GITHUB_OUTPUT
+
       # Upload production files only if generation succeeded
       - name: Upload production files
         uses: actions/upload-artifact@v4
         if: ${{ !cancelled() && steps.production.conclusion == 'success' }}
         with:
-          name: Production files
+          name: PawprintTarget-${{ steps.info.outputs.sha_short }}-${{ steps.info.outputs.now }}
           path: |
-            ${{ github.workspace }}/sch.pdf
-            ${{ github.workspace }}/bom.csv
-            ${{ github.workspace }}/gbr.zip
+            ${{ github.workspace }}/schematics/sch.pdf
+            ${{ github.workspace }}/schematics/bom.csv
+            ${{ github.workspace }}/schematics/gbr.zip
 
       - name: Run KiCad ERC
         id: erc
-        uses: sparkengineering/kicad-action@v4
+        uses: rechner/kicad-action@main
         if: '!cancelled()'
         with:
           kicad_sch: my-project.kicad_sch
@@ -56,27 +63,67 @@ jobs:
 
       - name: Run KiCad DRC
         id: drc
-        uses: sparkengineering/kicad-action@v4
+        uses: rechner/kicad-action@main
         if: '!cancelled()'
         with:
           kicad_pcb: my-project.kicad_pcb
           pcb_drc: true
 
+      - name: Annotate
+        if: always()
+        env:
+          ERC_FILE: ${{ github.workspace }}/schematics/erc.rpt
+          DRC_FILE: ${{ github.workspace }}/schematics/drc.rpt
+        run: |
+          cat >> $GITHUB_STEP_SUMMARY <<EOF
+          ### Build Summary :rocket:
+          For \`${{ steps.info.outputs.sha_short }}\`, built at \`${{ steps.info.outputs.now }}\`
+          | Job | Status | Summary |
+          | --- | ------ | ------- |
+          EOF
+          if [[ ${{ steps.erc.outputs.erc_violation }} -eq 0 ]]; then
+            echo "| ERC | ✅ Pass | |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| ERC | ❌ Fail | ${{ steps.erc.outputs.erc_message }} |" >> $GITHUB_STEP_SUMMARY
+          fi
+          if [[ ${{ steps.drc.outputs.drc_message }} -eq 0 ]]; then
+            echo "| DRC | ✅ Pass | |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| DRC | ❌ Fail | ${{ steps.drc.outputs.drc_message }} |" >> $GITHUB_STEP_SUMMARY
+          fi
+          cat >> $GITHUB_STEP_SUMMARY <<EOF
+          <details>
+          <summary>ERC Report</summary>
+          <pre>
+          EOF
+          cat $ERC_FILE >> $GITHUB_STEP_SUMMARY
+          cat >> $GITHUB_STEP_SUMMARY <<EOF
+          </pre>
+          </details>
+          <details>
+          <summary>DRC Report</summary>
+          <pre>
+          EOF
+          cat $DRC_FILE >> $GITHUB_STEP_SUMMARY
+          cat >> $GITHUB_STEP_SUMMARY <<EOF
+          </pre>
+          </details>
+          EOF
       # Upload ERC report only if ERC failed
       - name: Upload ERC report
         uses: actions/upload-artifact@v4
         if: ${{ failure() && steps.erc.conclusion == 'failure' }}
         with:
-          name: erc.rpt
-          path: ${{ github.workspace }}/erc.rpt
+          name: erc-${{ steps.info.outputs.sha_short }}-${{ steps.info.outputs.now }}.rpt
+          path: ${{ github.workspace }}/schematics/erc.rpt
 
       # Upload DRC report only if DRC failed
       - name: Upload DRC report
         uses: actions/upload-artifact@v4
         if: ${{ failure() && steps.drc.conclusion == 'failure' }}
         with:
-          name: drc.rpt
-          path: ${{ github.workspace }}/drc.rpt
+          name: drc-${{ steps.info.outputs.sha_short }}-${{ steps.info.outputs.now }}.rpt
+          path: ${{ github.workspace }}/schematics/drc.rpt
 ```
 
 See this example working in the action runs of this repository.
