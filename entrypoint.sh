@@ -87,12 +87,18 @@ then
     "$INPUT_KICAD_PCB"
 fi
 
+echo "Generating annotations for messages"
+echo "erc_message=$erc_message"
+echo "drc_message=$drc_message"
+
 # Generate Github Action annotations for failed ERC or DRC violations
 if [[ $erc_violation -gt 0 ]]; then
   echo "::error title=ERC Violation::$erc_message"
+  echo "::error file=$INPUT_KICAD_SCH,line=1::ERC Violation"
 fi
 if [[ $drc_violation -gt 0 ]]; then
   echo "::error title=DRC Violation::$drc_message"
+  echo "::error file=$INPUT_KICAD_PCB,line=1::DRC Violation"
 fi
 
 # Return non-zero exit code for ERC or DRC violations
