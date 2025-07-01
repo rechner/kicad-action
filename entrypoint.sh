@@ -23,6 +23,8 @@ then
     erc_message=`grep ^Found $kicad_out`
     echo "erc_message=$erc_message" >> "$GITHUB_OUTPUT"
     echo "erc_violation=$erc_violation" >> "$GITHUB_OUTPUT"
+    echo "KICAD_ERC_MESSAGE=$erc_message" >> "$GITHUB_ENV"
+    echo "KICAD_ERC_VIOLATION=$erc_violation" >> "$GITHUB_ENV"
 fi
 
 # Export schematic PDF if requested
@@ -54,6 +56,8 @@ then
   drc_message="`cat $kicad_out | tr '\n' ' '`"
   echo "drc_message=$drc_message" >> "$GITHUB_OUTPUT"
   echo "drc_violation=$drc_violation" >> "$GITHUB_OUTPUT"
+  echo "KICAD_DRC_MESSAGE=$drc_message" >> "$GITHUB_ENV"
+  echo "KICAD_DRC_VIOLATION=$drc_violation" >> "$GITHUB_ENV"
 fi
 
 # Export Gerbers if requested
