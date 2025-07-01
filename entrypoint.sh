@@ -95,12 +95,10 @@ echo "drc_message=$drc_message"
 
 # Generate Github Action annotations for failed ERC or DRC violations
 if [[ $erc_violation -gt 0 ]]; then
-  echo "::error title=ERC Violation::$erc_message"
-  echo "::error file=$INPUT_KICAD_SCH,line=1::ERC Violation"
+  echo "::error title=ERC Violation,file=$INPUT_KICAD_SCH,line=1::$erc_message"
 fi
 if [[ $drc_violation -gt 0 ]]; then
-  echo "::error title=DRC Violation::$drc_message"
-  echo "::error file=$INPUT_KICAD_PCB,line=1::DRC Violation"
+  echo "::error title=DRC Violation,file=$INPUT_KICAD_PCB,line=1::$drc_message"
 fi
 
 # Return non-zero exit code for ERC or DRC violations
