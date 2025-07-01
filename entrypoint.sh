@@ -20,7 +20,8 @@ then
     --exit-code-violations \
     "$INPUT_KICAD_SCH" | tee "$kicad_out"
     erc_violation=${PIPESTATUS[0]}
-    echo "erc_message=`grep ^Found $kicad_out`" >> "$GITHUB_OUTPUT"
+    erc_message=`grep ^Found $kicad_out`
+    echo "erc_message=$erc_message" >> "$GITHUB_OUTPUT"
     echo "erc_violation=$erc_violation" >> "$GITHUB_OUTPUT"
 fi
 
@@ -50,7 +51,8 @@ then
     --exit-code-violations \
     "$INPUT_KICAD_PCB" | tee "$kicad_out"
   drc_violation=${PIPESTATUS[0]}
-  echo "drc_message=`cat $kicad_out | tr '\n' ' '`" >> "$GITHUB_OUTPUT"
+  drc_message="`cat $kicad_out | tr '\n' ' '`"
+  echo "drc_message=$drc_message" >> "$GITHUB_OUTPUT"
   echo "drc_violation=$drc_violation" >> "$GITHUB_OUTPUT"
 fi
 
